@@ -318,3 +318,225 @@ class FixedDepositAccount implements DepositOnlyAccount {
 
 **Q5. Agar Client class mein `instanceof` (type checking) use karke objects handle karein, toh kaunse principles break hote hain?**
 *Answer:* Type checking se OCP (Open-Closed Principle) break hota hai (kyunki naye type ke liye code modify karna padega) aur yeh LSP violation ko patch karne ka galat tarika (code smell) hai kyunki polymophism theek se use nahi ho raha.
+
+---
+<br>
+<br>
+
+---
+
+# SOLID Design Principles (Part 2) - Advanced Notes & Scenarios
+
+Yeh notes Coder Army ke "SOLID Design Principles | part 2" video par based hain. Isme LSP ke advanced guidelines, ISP, aur DIP ko depth mein cover kiya gaya hai. 
+
+---
+
+## 1. Liskov Substitution Principle (LSP) - Advanced Guidelines
+
+### Detailed Notes:
+Sirf inheritance follow karna LSP ko guarantee nahi karta. Child class ko parent class ki tarah behave karna chahiye. Iske liye 3 main guidelines hain:
+
+**1. Signature Rule:**
+*   **Method Argument Rule:** Child class overridden method mein same argument type ya uska broader type (parent class of the argument) accept karni chahiye. C++ / Java strict signature match force karte hain [00:04:32].
+*   **Return Type Rule (Covariance):** Child class overridden method se ya toh same type return kare ya uska narrower type (subclass) return kare. Lekin broader type return nahi kar sakti [00:12:12].
+*   **Exception Rule:** Child class sirf wahi exceptions throw kar sakti hai jo parent throw karta hai, ya uski sub-exceptions (narrower). Broader exceptions throw karna mana hai [00:17:42].
+
+**2. Property Rule:**
+*   **Class Invariant:** Wo rules jo ek class ke liye hamesha true hote hain (e.g., account balance >= 0). Child class ko in invariants ko ya toh same rakhna hota hai ya aur strict karna hota hai, par weak nahi kar sakti [00:29:18].
+*   **History Constraint:** Ek baar parent class ne jo property/state fix kar di (e.g., `withdrawal_allowed = true`), child class use dynamically change ya revoke nahi kar sakti. Immutable properties immutable hi rehni chahiye [00:34:09].
+
+**3. Method Rule:**
+*   **Pre-conditions:** Method execute hone se pehle ki conditions. Child class pre-conditions ko weak (loose) kar sakti hai, par strong (strict) nahi kar sakti [00:40:02].
+*   **Post-conditions:** Method execute hone ke baad ki conditions. Child class post-conditions ko strong kar sakti hai (extra positive results de sakti hai), par weak nahi kar sakti [00:47:34].
+
+### 5 Advanced Interview Questions (Real-World & Implementation):
+
+**Q1. Suppose aap ek 5-tier Role-Based Access Control (RBAC) system design kar rahe ho. `BaseUser` ek exception `AccessDeniedException` throw karta hai `performAction()` mein. Agar `AdminUser` use override karke `RuntimeException` throw kare, toh konsa rule break hoga?**
+*Answer:* LSP ka **Exception Rule** break hoga. `RuntimeException` ek broader exception hai. Client code jo sirf `AccessDeniedException` catch karne ke liye likha gaya hai, wo `RuntimeException` aate hi crash ho jayega. Child class (AdminUser) ko ya toh same ya narrower exception throw karni chahiye.
+
+**Q2. Graph algorithms implement karte waqt Covariant Return Types ka use karke ek LSP-compliant Java snippet likho.**
+*Answer:* Covariant return types allow subclass to return a more specific type.
+```java
+class GraphNode {}
+class DirectedGraphNode extends GraphNode {}
+
+abstract class GraphPathFinder {
+    abstract GraphNode findPath(); // Returns base type
+}
+
+class DirectedPathFinder extends GraphPathFinder {
+    @Override
+    DirectedGraphNode findPath() { // Returns subclass type (Narrower) -> Allowed!
+        return new DirectedGraphNode();
+    }
+}
+```
+
+**Q3. ATS (Applicant Tracking System) mein resume process karte waqt humara class invariant hai "resumeSize <= 5MB". Naya AI-parser is constraint ko 10MB kar deta hai. Kya ye LSP violation hai?**
+*Answer:* Haan, ye **Class Invariant Rule** ka violation hai. Invariants ko child class mein ya toh intact rakhna chahiye ya strictly aur narrow (e.g., 2MB) karna chahiye. Agar base class ki guarantee thi ki >5MB fail hoga, aur child ne 10MB allow kar diya, toh base class ki guarantee toot gayi.
+
+**Q4. (Implementation) Pre-conditions and Post-conditions in Java. Ek AI Resume scorer ka function likho jo Pre-condition ko weak aur post-condition ko strong karta ho.**
+```java
+import java.util.Scanner;
+
+class ResumeScorer {
+    // Pre: wordCount > 100
+    // Post: Returns score between 0 and 100
+    public int calculateScore(int wordCount) {
+        if (wordCount <= 100) throw new IllegalArgumentException("Too short");
+        return 50; 
+    }
+}
+
+class AIResumeScorer extends ResumeScorer {
+    @Override
+    public int calculateScore(int wordCount) {
+        // Pre-condition weakened: Now accepts wordCount > 50
+        if (wordCount <= 50) throw new IllegalArgumentException("Too short for AI");
+        
+        int score = 85;
+        // Post-condition strengthened: Score > 80 guarenteed for valid AI parse
+        return score; 
+    }
+    
+    public static void main(String[] args) {
+        Scanner sc = new Scanner(System.in);
+        System.out.println("Enter word count:");
+        int count = sc.nextInt();
+        System.out.println("Score: " + new AIResumeScorer().calculateScore(count));
+        sc.close();
+    }
+}
+```
+
+**Q5. History constraint kya hai? Ek immutability ka example do jo history constraint break karta ho.**
+*Answer:* History constraint kehta hai ki state mutable se immutable ya vice versa dynamically switch nahi honi chahiye subclasses mein. Agar parent class ne fields ko `final` (immutable) rakha hai, but subclass internal state ko setters ke through change karne ka hack introduce kar de, toh wo parent ki historical guarantee ko break kar deta hai.
+
+---
+
+## 2. Interface Segregation Principle (ISP)
+
+### Detailed Notes:
+*   "Clients should not be forced to depend upon interfaces that they do not use" [00:56:51].
+*   Ek bada (fat) general-purpose interface banane se better hai chhote, specific interfaces banana [00:53:18].
+*   Agar ek interface mein bahut saare unrelated methods hain, toh implement karne wali classes ko dummy/empty methods banane padte hain ya `UnsupportedOperationException` throw karni padti hai, jo LSP ko bhi violate kar sakta hai [00:55:54].
+*   *Solution:* 2D aur 3D shapes ke interfaces alag kar do taaki Square ko Volume ka function implement na karna pade [00:57:12].
+
+### 5 Advanced Interview Questions (Real-World & Implementation):
+
+**Q1. 5-tier RBAC system mein `SystemAdmin`, `ContentManager`, aur `Viewer` roles hain. Ek single interface `IUserActions` (create, edit, delete, view) use karne mein kya problem hai? Use ISP se kaise theek karenge?**
+*Answer:* Single `IUserActions` interface force karega `Viewer` class ko `create()`, `edit()`, aur `delete()` implement karne ke liye, jo wo support nahi karta (throw errors). 
+*Fix:* Use ISP by creating segregated interfaces: `IViewable`, `ICreatable`, `IEditable`.
+```java
+interface IViewable { void view(); }
+interface ICreatable { void create(); }
+
+class ViewerRole implements IViewable {
+    public void view() { System.out.println("Viewing..."); }
+}
+
+class ContentManagerRole implements IViewable, ICreatable {
+    public void view() { System.out.println("Viewing..."); }
+    public void create() { System.out.println("Creating..."); }
+}
+```
+
+**Q2. Competitive programming platforms (like Codeforces/LeetCode) ke API client mein ISP kaise apply karenge?**
+*Answer:* Ek giant `PlatformAPI` interface banane ke bajaye, use `ISubmissionAPI`, `IProblemAPI`, `IUserStatsAPI` mein break karenge. Aise ek analytics dashboard module ko sirf `IUserStatsAPI` ko implement karna padega, baaki sab overhead avoid hoga.
+
+**Q3. ISP aur Single Responsibility Principle (SRP) mein fundamental difference kya hai?**
+*Answer:* SRP classes ke internal logic aur responsibility se deal karta hai ("one reason to change"). ISP interface ke design aur client ke point of view se deal karta hai ("don't force clients to see methods they don't use"). SRP class focus karta hai, ISP contract focus karta hai.
+
+**Q4. MERN stack backend (Node.js/Express) likhte waqt Controller layer mein ISP kaise reflect hota hai?**
+*Answer:* Ek massive `UserController` interface banane ke bajaye (jisme login, updateProfile, deleteUser, assignRole sab ho), hum segregation karte hain jaise `AuthInterface` aur `UserProfileInterface`. Aise routes decouple hote hain.
+
+**Q5. (Implementation) Dynamic Programming problems (e.g., Segment Trees) build karte waqt lazy propagation aur basic point updates dono hote hain. ISP apply karke interfaces likhiye.**
+```java
+interface IPointUpdatable {
+    void pointUpdate(int index, int val);
+}
+interface ILazyUpdatable {
+    void rangeUpdate(int l, int r, int val);
+}
+
+// Basic Segment Tree only implements PointUpdatable
+class BasicSegmentTree implements IPointUpdatable {
+    public void pointUpdate(int index, int val) { /* logic */ }
+}
+
+// Advanced Segment Tree implements both
+class LazySegmentTree implements IPointUpdatable, ILazyUpdatable {
+    public void pointUpdate(int index, int val) { /* logic */ }
+    public void rangeUpdate(int l, int r, int val) { /* logic */ }
+}
+```
+
+---
+
+## 3. Dependency Inversion Principle (DIP)
+
+### Detailed Notes:
+*   "High-level modules should not depend on low-level modules. Both should depend on abstractions." [01:00:08]
+*   High-level modules (business logic) ko databases, API calls, ya specific framework implementations (low-level modules) par directly dependent nahi hona chahiye [01:01:22].
+*   *Solution:* Ek abstraction (Interface/Abstract class) layer beech mein daalna chahiye [01:05:41].
+*   DIP ko hum **Dependency Injection (DI)** ke through achieve karte hain, jisme required objects (dependencies) constructor ya setter ke through pass kiye jaate hain [01:10:22].
+*   Golden Rule: "If Open-Closed Principle is the target, then Dependency Inversion Principle is the solution." [01:11:30]
+
+### 5 Advanced Interview Questions (Real-World & Implementation):
+
+**Q1. Project InternEase (AI-driven EdTech platform) mein Gemini AI APIs aur Tesseract.js (OCR) use hote hain resume parse karne ke liye. Core scoring logic directly Tesseract wrapper se baat kar raha hai. DIP apply karke iska Java code likhiye.**
+*Answer:* Core scoring logic ko OCR implementaion se decouple karna hoga using an interface `DocumentParser`.
+```java
+import java.util.Scanner;
+
+interface DocumentParser {
+    String extractText(String filePath);
+}
+
+class TesseractOCR implements DocumentParser {
+    public String extractText(String filePath) { return "Text from Tesseract"; }
+}
+
+class GeminiAIParser implements DocumentParser {
+    public String extractText(String filePath) { return "Text from Gemini AI"; }
+}
+
+// High Level Module
+class ATSEngine {
+    private DocumentParser parser; // Abstraction
+    
+    // Dependency Injection
+    public ATSEngine(DocumentParser parser) {
+        this.parser = parser;
+    }
+    
+    public void scoreResume(String filePath) {
+        String text = parser.extractText(filePath);
+        System.out.println("Scoring: " + text);
+    }
+    
+    public static void main(String[] args) {
+        Scanner sc = new Scanner(System.in);
+        System.out.println("Press 1 for Tesseract, 2 for Gemini AI:");
+        int choice = sc.nextInt();
+        
+        DocumentParser selectedParser = (choice == 1) ? new TesseractOCR() : new GeminiAIParser();
+        ATSEngine engine = new ATSEngine(selectedParser);
+        engine.scoreResume("resume.pdf");
+        sc.close();
+    }
+}
+```
+
+**Q2. DIP ke context mein "Inversion of Control (IoC)" ka kya role hota hai?**
+*Answer:* Normal flow mein High-Level module khud Low-Level module ka object create karta hai (`new LowLevel()`). IoC framework (jaise Spring Boot) control "invert" kar deta hai. Ab container objects create karta hai aur High-level modules ke constructor mein automatically inject kar deta hai (Dependency Injection), validating DIP completely.
+
+**Q3. Ek monolithic app ko Microservices mein migrate karte waqt DIP kaise madad karta hai?**
+*Answer:* Agar backend strongly coupled hai (jaise local DB queries), migrate karna nightmare hoga. Agar business logic sirf `IRepository` abstraction par depend karta hai, toh monolith DB repository ko easily Microservice HTTP Client repository se swap kiya jaa sakta hai without changing core business logic.
+
+**Q4. FleetMaster project (Fleet management system) mein real-time GPS tracking hai. UDP protocol implementation directly business layer mein embedded hai. Dangers batao aur DIP se resolve karo.**
+*Answer:* Danger ye hai ki agar kal ko UDP ki jagah WebSockets ya MQTT API use karni padhi, toh saari core logic modify karni padegi (Violates OCP). 
+*Fix:* Ek interface `ILocationProvider` banao. `UDPLocationTracker` aur `MQTTLocationTracker` use implement karein. Core logic me `ILocationProvider` inject karo.
+
+**Q5. DIP aur Strategy Design Pattern mein kya connection hai?**
+*Answer:* DIP architectural guideline hai, jabki Strategy pattern uska ek runtime implementation technique hai. Strategy pattern interface ke multiple implementations banata hai aur high-level module ko interface de deta hai, jisse algorithms dynamically runtime pe switch ho sakte hain—exactly what DIP preaches.
