@@ -110,7 +110,7 @@ Yeh notes Coder Army ke "SOLID Design Principles" video par based hain. Isme OOP
 
 ## 1. Introduction to SOLID Principles & Real-World Problems
 
-### Detailed Notes (Hinglish):
+### Detailed Notes :
 - **Overview:** Real-world projects mein thousands of classes banti hain. Agar in classes ko theek se manage nahi kiya gaya, toh code ek "mess" ban jata hai.
 - **Problems without Design Principles:**
   1. **Maintainability Issue:** Naya feature add karne par existing code break ho sakta hai aur changes karna mushkil hota hai.
@@ -157,6 +157,32 @@ Yeh notes Coder Army ke "SOLID Design Principles" video par based hain. Isme OOP
   - `CartDBStorage`: Sirf database mein save karne ka logic handle karega.
 - **Misconception:** SRP ka matlab yeh nahi hai ki class mein sirf ek hi method ho. Ek class mein kitne bhi methods ho sakte hain, bas un sabka ultimate goal (responsibility) ek hi hona chahiye.
 
+
+```java
+
+// SRP: Classes handled separate responsibilities
+
+class ShoppingCart {
+    public double calculateTotal() { 
+        // Logic to calculate total
+        return 1500.0; 
+    }
+}
+
+class CartInvoicePrinter {
+    public void printInvoice(ShoppingCart cart) { 
+        System.out.println("Printing Invoice for total: " + cart.calculateTotal()); 
+    }
+}
+
+class CartDBStorage {
+    public void saveToDB(ShoppingCart cart) { 
+        System.out.println("Saving cart details to Database..."); 
+    }
+}
+
+```
+
 ### 5 Interview Questions & Answers:
 **Q1. Single Responsibility Principle (SRP) kya kehta hai?**
 *Answer:* SRP kehta hai ki ek class ko change karne ka sirf ek hi reason hona chahiye. In simple terms, ek class ko sirf ek hi specific task ya responsibility handle karni chahiye.
@@ -184,6 +210,31 @@ Yeh notes Coder Army ke "SOLID Design Principles" video par based hain. Isme OOP
   - Alag-alag concrete classes banayein jo is interface ko implement karein: `SQLPersistence`, `MongoPersistence`, `FilePersistence`.
   - Ab kal ko agar Cassandra DB ka support add karna ho, toh existing classes ko change nahi karna padega, bas ek nayi class banani hogi. Code open for extension hai, but closed for modification.
 
+
+```java
+
+// OCP: Open for extension, closed for modification
+
+interface DBPersistence {
+void save(ShoppingCart cart);
+}
+
+class SQLPersistence implements DBPersistence {
+@Override
+public void save(ShoppingCart cart) { 
+    System.out.println("Saving to SQL Database"); 
+}
+}
+
+class MongoPersistence implements DBPersistence {
+@Override
+public void save(ShoppingCart cart) { 
+    System.out.println("Saving to MongoDB"); 
+}
+}
+
+```
+
 ### 5 Interview Questions & Answers:
 **Q1. Open-Closed Principle (OCP) ka actual meaning kya hai?**
 *Answer:* Iska matlab hai ki hume software design aisa banana chahiye ki naye functionalities add karte waqt (Open for extension) purane tested aur working code ko modify na karna pade (Closed for modification).
@@ -208,17 +259,49 @@ Yeh notes Coder Army ke "SOLID Design Principles" video par based hain. Isme OOP
 - **Definition:** "Subclasses should be substitutable for their base classes." Iska matlab jahan bhi Parent class ka object use ho raha hai, wahan Child class ka object replace karne par program bina kisi error ke chalna chahiye.
 - **Key Idea:** Subclass ko hamesha Parent class ke features ko **expand** karna chahiye, unhe **narrow down** (kam) nahi karna chahiye.
 - **Problem Scenario:** - `Account` ek base class hai jisme `deposit()` aur `withdraw()` functions hain.
-  - `SavingsAccount` aur `CurrentAccount` dono ise properly implement karte hain.
-  - Ab ek `FixedDepositAccount` aata hai, jo `Account` ko inherit karta hai. Par FD mein `withdraw` allowed nahi hota. 
-  - Toh developer ne `FixedDepositAccount` ke `withdraw()` method mein Exception throw karwa di.
-  - Ab client jisko lagta hai ki saare accounts mein deposit/withdraw chalega, wo FD par withdraw call karke crash ho jayega. LSP violate ho gaya!
+- `SavingsAccount` aur `CurrentAccount` dono ise properly implement karte hain.
+- Ab ek `FixedDepositAccount` aata hai, jo `Account` ko inherit karta hai. Par FD mein `withdraw` allowed nahi hota. 
+- Toh developer ne `FixedDepositAccount` ke `withdraw()` method mein Exception throw karwa di.
+- Ab client jisko lagta hai ki saare accounts mein deposit/withdraw chalega, wo FD par withdraw call karke crash ho jayega. LSP violate ho gaya!
 - **Bad Fix:** Client class mein `if-else` laga kar check karna ki "kya ye FixedDeposit hai? Toh withdraw mat karna". Yeh OCP ko violate kar deta hai aur client ko accounts se tightly couple kar deta hai.
 - **Solution (Hierarchy Fix):**
-  - Ek abstract class banayein `DepositOnlyAccount` (jisme sirf deposit ho).
-  - Dusri abstract class banayein `WithdrawableAccount` (jo DepositOnlyAccount ko inherit kare aur withdraw add kare).
-  - `FixedDepositAccount` ko `DepositOnlyAccount` se inherit karwayein.
-  - `Savings` aur `Current` account ko `WithdrawableAccount` se inherit karwayein.
-  - Ab client perfectly do lists maintain kar sakta hai bina runtime exceptions/crashes ke.
+- Ek abstract class banayein `DepositOnlyAccount` (jisme sirf deposit ho).
+- Dusri abstract class banayein `WithdrawableAccount` (jo DepositOnlyAccount ko inherit kare aur withdraw add kare).
+- `FixedDepositAccount` ko `DepositOnlyAccount` se inherit karwayein.
+- `Savings` aur `Current` account ko `WithdrawableAccount` se inherit karwayein.
+- Ab client perfectly do lists maintain kar sakta hai bina runtime exceptions/crashes ke.
+
+```java
+
+// LSP: Properly segregating behaviors so subclasses don't break expectations
+
+interface DepositOnlyAccount {
+    void deposit(double amount);
+}
+
+interface WithdrawableAccount extends DepositOnlyAccount {
+    void withdraw(double amount);
+}
+
+class SavingsAccount implements WithdrawableAccount {
+    private double balance;
+    
+    @Override
+    public void deposit(double amount) { this.balance += amount; }
+    
+    @Override
+    public void withdraw(double amount) { this.balance -= amount; }
+}
+
+class FixedDepositAccount implements DepositOnlyAccount {
+    private double balance;
+
+    @Override
+    public void deposit(double amount) { this.balance += amount; }
+    // Withdraw implement karne ki zaroorat hi nahi, so exception ka risk khatam!
+}
+
+```
 
 ### 5 Interview Questions & Answers:
 **Q1. Liskov Substitution Principle (LSP) kya state karta hai?**
